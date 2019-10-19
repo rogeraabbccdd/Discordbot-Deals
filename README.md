@@ -3,7 +3,7 @@ A discord bot to get deals information of steam app.
 
 # Deals Discord Bot
 A discord bot to get deals information form [isthereanydeal.com](https://isthereanydeal.com)  
-Click [here](https://discordapp.com/oauth2/authorize?client_id=634902541687324702&scope=bot&permissions=26688) to add the bot.
+Click [here](https://discordapp.com/oauth2/authorize?client_id=634902541687324702&scope=bot&permissions=28832) to add the bot.
   
 ![preview](preview.png)  
   
