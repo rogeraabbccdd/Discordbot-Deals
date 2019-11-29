@@ -165,8 +165,7 @@ const getItadData = async (name) => {
   } catch (err) {
     console.log(err);
     react = '❌'
-    // embed = new Discord.RichEmbed().setColor(embedColorError).setTitle('遊戲資料查詢失敗，請再試一次')
-    embed.setTitle("err")
+    embed = new Discord.RichEmbed().setColor(embedColorError).setTitle('遊戲資料查詢失敗，請再試一次')
   }
   return { embed, react }
 }
