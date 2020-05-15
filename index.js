@@ -46,7 +46,7 @@ const embedColor = '#66c0f4'
 const embedColorError = '#ff2222'
 
 const getItadData = async (name) => {
-  const embed = new Discord.RichEmbed()
+  let embed = new Discord.RichEmbed()
   let react = '❌'
   try {
     const query = encodeURIComponent(name.trim())
@@ -111,10 +111,8 @@ const getItadData = async (name) => {
 
       let rSteam = ''
 
-
       /* is steam */
       if (appInfo.id !== -1) {
-        
         rInfo += `https://store.steampowered.com/${appInfo.type}/${appInfo.id}/\n` +
           `https://steamdb.info/${appInfo.type}/${appInfo.id}/`
 
@@ -155,15 +153,15 @@ const getItadData = async (name) => {
       embed
         .addField('isthereanydeal', rDeal + '\n\u200b')
         .addField('入包資訊', rBundle + '\n\u200b')
-      
-      if(rSteam.length > 0)  embed.addField('Steam', rSteam + '\n\u200b')
+
+      if (rSteam.length > 0) embed.addField('Steam', rSteam + '\n\u200b')
 
       embed.addField('更多資訊', rInfo)
 
       react = '✅'
     }
   } catch (err) {
-    console.log(err);
+    console.log(err)
     react = '❌'
     embed = new Discord.RichEmbed().setColor(embedColorError).setTitle('遊戲資料查詢失敗，請再試一次')
   }
@@ -193,9 +191,9 @@ client.on('message', msg => {
       msg.react(client.emojis.get(process.env.LOADING_EMOJI))
       const name = msg.content.split('!itad ')[1]
       getItadData(name).then((data) => {
-      msg.channel.send(data.embed)
-      msg.clearReactions().then(() => {
-        msg.react(data.react).catch()
+        msg.channel.send(data.embed)
+        msg.clearReactions().then(() => {
+          msg.react(data.react).catch()
         }).catch()
       })
     }
