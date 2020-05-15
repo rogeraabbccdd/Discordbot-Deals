@@ -175,16 +175,33 @@ client.on('ready', () => {
 })
 
 client.on('message', msg => {
-  if (msg.content && msg.content.substring(0, 6) === '!itad ' && !msg.author.bot) {
-    msg.react(client.emojis.get(process.env.LOADING_EMOJI))
-    const name = msg.content.split('!itad ')[1]
-    getItadData(name).then((data) => {
+  if (msg.content && !msg.author.bot) {
+    if (msg.content === '!itadhelp') {
+      msg.react(process.env.LOADING_EMOJI.toString())
+      const reply =
+        ':desktop:  機器人指令\n' +
+        '• `!itad 遊戲名稱` - 查詢遊戲資訊\n' +
+        '\n:link:  相關連結\n' +
+        '• 巴哈文章: https://forum.gamer.com.tw/C.php?bsn=60599&snA=27046\n' +
+        '• 邀請連結: https://discordapp.com/oauth2/authorize?client_id=634902541687324702&scope=bot&permissions=28832\n' +
+        '• 機器人原始碼: https://github.com/rogeraabbccdd/Discordbot-Deals'
+      msg.channel.send(reply)
+      msg.clearReactions().then(() => {
+        msg.react('✅').catch()
+      }).catch()
+    } else if (msg.content.substring(0, 6) === '!itad ') {
+      msg.react(client.emojis.get(process.env.LOADING_EMOJI))
+      const name = msg.content.split('!itad ')[1]
+      getItadData(name).then((data) => {
       msg.channel.send(data.embed)
       msg.clearReactions().then(() => {
         msg.react(data.react).catch()
-      }).catch()
-    })
+        }).catch()
+      })
+    }
   }
 })
 
-client.login(process.env.DISCORD_TOKEN)
+client.login(process.env.DISCORD_TOKEN).then(() => {
+  client.user.setActivity('使用 !iteadhelp 查詢指令', { type: 'LISTENING' })
+})
