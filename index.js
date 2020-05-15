@@ -135,9 +135,9 @@ const getItadData = async (name) => {
             rSteam += `原價: ${price.initial_formatted.length === 0 ? price.final_formatted : price.initial_formatted}, \n` +
               `目前價格: ${price.final_formatted}, -${price.discount_percent}%`
 
-            htmlString = await cloudscraper(`https://steamdb.info/api/ExtensionGetPrice/?appid=${appInfo.id}&currency=TWD`)
-            const steamLow = JSON.parse(htmlString)
-            if (steamLow.success) rSteam += `\n歷史最低: ${steamLow.data.lowest.price}, -${steamLow.data.lowest.discount}%, ${formatDate(new Date(steamLow.data.lowest.date))}\n`
+            // htmlString = await cloudscraper(`https://steamdb.info/api/ExtensionGetPrice/?appid=${appInfo.id}&currency=TWD`)
+            // const steamLow = JSON.parse(htmlString)
+            // if (steamLow.success) rSteam += `\n歷史最低: ${steamLow.data.lowest.price}, -${steamLow.data.lowest.discount}%, ${formatDate(new Date(steamLow.data.lowest.date))}\n`
           }
         } else if (appInfo.type === 'sub') {
           htmlString = await rp(`https://store.steampowered.com/api/packagedetails/?packageids=${appInfo.id}&cc=tw`)
