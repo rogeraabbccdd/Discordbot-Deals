@@ -3,9 +3,8 @@ require('dotenv').config()
 const Discord = require('discord.js')
 const client = new Discord.Client()
 
-const rp = require('request-promise')
+const axios = require('axios')
 const schedule = require('node-schedule')
-const cloudscraper = require('cloudscraper')
 
 const getColors = require('get-image-colors')
 
@@ -31,8 +30,8 @@ const itadShops = 'amazonus,bundlestars,chrono,direct2drive,dlgamer,dreamgame,fi
 let exRateUSDTW = 30
 
 const exRateUpdate = () => {
-  rp('https://tw.rter.info/capi.php').then((res) => {
-    exRateUSDTW = Math.round(JSON.parse(res).USDTWD.Exrate * 100) / 100
+  axios.get('https://tw.rter.info/capi.php').then((res) => {
+    exRateUSDTW = Math.round(res.data.USDTWD.Exrate * 100) / 100
   })
 }
 
@@ -50,11 +49,13 @@ const getItadData = async (name) => {
   let react = '❌'
   try {
     const query = encodeURIComponent(name.trim())
-    let htmlString = ''
+    let json = {}
+    let json2 = {}
+    let json3 = {}
 
     /* search game */
-    htmlString = await rp(`https://api.isthereanydeal.com/v01/search/search/?key=${process.env.ITAD_KEY}&q=${query}&offset=&limit=&region=us&country=US&shops=${itadShops}`)
-    const searchJson = JSON.parse(htmlString)
+    json = await axios.get(`https://api.isthereanydeal.com/v01/search/search/?key=${process.env.ITAD_KEY}&q=${query}&offset=&limit=100&region=us&country=US&shops=${itadShops}`)
+    const searchJson = json.data
     const find = getItadPlainByName(searchJson, name)
     if (find.length === 0) {
       embed.setColor(embedColorError)
@@ -84,10 +85,15 @@ const getItadData = async (name) => {
       embed.setTitle(appTitle)
       embed.setColor(embedColor)
 
-      htmlString = await rp(`https://api.isthereanydeal.com/v01/game/lowest/?key=${process.env.ITAD_KEY}&plains=${plain}&shops=${itadShops}`)
-      const lowest = JSON.parse(htmlString).data[plain]
-      htmlString = await rp(`https://api.isthereanydeal.com/v01/game/prices/?key=${process.env.ITAD_KEY}&plains=${plain}&shops=${itadShops}`)
-      const current = JSON.parse(htmlString).data[plain].list[0]
+      json = axios.get(`https://api.isthereanydeal.com/v01/game/lowest/?key=${process.env.ITAD_KEY}&plains=${plain}&shops=${itadShops}`)
+      json2 = axios.get(`https://api.isthereanydeal.com/v01/game/prices/?key=${process.env.ITAD_KEY}&plains=${plain}&shops=${itadShops}`)
+      json3 = axios.get(`https://api.isthereanydeal.com/v01/game/bundles/?key=${process.env.ITAD_KEY}&plains=${plain}&expired=0`)
+      json = await json
+      json2 = await json2
+      json3 = await json3
+      const lowest = json.data.data[plain]
+      const current = json2.data.data[plain].list[0]
+      const bundle = json3.data.data[plain]
 
       const rDeal =
         `原價: ${current.price_old} USD / ${Math.round(current.price_old * exRateUSDTW * 100) / 100} TWD\n` +
@@ -96,9 +102,6 @@ const getItadData = async (name) => {
         `${current.url}`
 
       let rInfo = `https://isthereanydeal.com/game/${plain}/info/\n`
-
-      htmlString = await rp(`https://api.isthereanydeal.com/v01/game/bundles/?key=${process.env.ITAD_KEY}&plains=${plain}&expired=0`)
-      const bundle = JSON.parse(htmlString).data[plain]
 
       let rBundle = `總入包次數: ${bundle.total}`
 
@@ -127,8 +130,8 @@ const getItadData = async (name) => {
 
           embed.setImage(replyImage)
 
-          htmlString = await rp(`http://store.steampowered.com/api/appdetails/?appids=${appInfo.id}&cc=tw&filters=price_overview`)
-          const steamOV = JSON.parse(htmlString)
+          json = await axios.get(`http://store.steampowered.com/api/appdetails/?appids=${appInfo.id}&cc=tw&filters=price_overview`)
+          const steamOV = json.data
 
           if (steamOV[appInfo.id].success && typeof steamOV[appInfo.id].data === 'object') {
             const price = steamOV[appInfo.id].data.price_overview
@@ -140,8 +143,8 @@ const getItadData = async (name) => {
             // if (steamLow.success) rSteam += `\n歷史最低: ${steamLow.data.lowest.price}, -${steamLow.data.lowest.discount}%, ${formatDate(new Date(steamLow.data.lowest.date))}\n`
           }
         } else if (appInfo.type === 'sub') {
-          htmlString = await rp(`https://store.steampowered.com/api/packagedetails/?packageids=${appInfo.id}&cc=tw`)
-          const steamOV = JSON.parse(htmlString)
+          json = await axios.get(`https://store.steampowered.com/api/packagedetails/?packageids=${appInfo.id}&cc=tw`)
+          const steamOV = json.data
           if (steamOV[appInfo.id].success) {
             const { price } = steamOV[appInfo.id].data
             rSteam += `原價:  NT$ ${price.initial / 100}\n` +
