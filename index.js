@@ -45,7 +45,7 @@ const embedColor = '#66c0f4'
 const embedColorError = '#ff2222'
 
 const getItadData = async (name) => {
-  let embed = new Discord.RichEmbed()
+  let embed = new Discord.MessageEmbed()
   let react = '❌'
   try {
     const query = encodeURIComponent(name.trim())
@@ -196,15 +196,15 @@ client.on('message', msg => {
         '• 邀請連結: https://discordapp.com/oauth2/authorize?client_id=634902541687324702&scope=bot&permissions=28832\n' +
         '• 機器人原始碼: https://github.com/rogeraabbccdd/Discordbot-Deals'
       msg.channel.send(reply)
-      msg.clearReactions().then(() => {
+      msg.reactions.removeAll().then(() => {
         msg.react('✅').catch()
       }).catch()
     } else if (msg.content.substring(0, 6) === '!itad ') {
-      msg.react(client.emojis.get(process.env.LOADING_EMOJI))
+      msg.react(process.env.LOADING_EMOJI.toString())
       const name = msg.content.split('!itad ')[1]
       getItadData(name).then((data) => {
         msg.channel.send(data.embed)
-        msg.clearReactions().then(() => {
+        msg.reactions.removeAll().then(() => {
           msg.react(data.react).catch()
         }).catch()
       })
