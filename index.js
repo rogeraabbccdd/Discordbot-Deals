@@ -213,5 +213,5 @@ client.on('message', msg => {
 })
 
 client.login(process.env.DISCORD_TOKEN).then(() => {
-  client.user.setActivity('使用 !iteadhelp 查詢指令', { type: 'LISTENING' })
+  client.user.setActivity('使用 !itadhelp 查詢指令', { type: 'LISTENING' })
 })
