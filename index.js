@@ -42,8 +42,7 @@ const exRateUpdate = () => {
 const sale = {
   start: '',
   end: '',
-  name: '',
-  text: ''
+  name: ''
 }
 
 const fetchSale = () => {
@@ -74,6 +73,10 @@ const fetchSale = () => {
     })
     sale.start = new Date(new Date(sale.start).toLocaleString('en-US', { timeZone: 'Asia/Taipei' })).getTime()
     sale.end = new Date(new Date(sale.end).toLocaleString('en-US', { timeZone: 'Asia/Taipei' })).getTime()
+  }).catch(() => {
+    sale.start = ''
+    sale.end = ''
+    sale.name = ''
   })
 }
 
@@ -87,9 +90,11 @@ schedule.scheduleJob('* * 0 * * *', function () {
 
 let showSale = true
 let changed = false
+let loggedIn = false
 setInterval(() => {
+  if (!loggedIn) return
   const now = new Date()
-  if (showSale) {
+  if (showSale && sale.name.length > 0) {
     const time = now.getTime()
     let text = ''
     if (time < sale.start) {
@@ -283,4 +288,6 @@ client.on('message', msg => {
   }
 })
 
-client.login(process.env.DISCORD_TOKEN)
+client.login(process.env.DISCORD_TOKEN).then(() => {
+  loggedIn = true
+})
