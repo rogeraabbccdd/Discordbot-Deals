@@ -1,12 +1,16 @@
 require('dotenv').config()
-
 const Discord = require('discord.js')
-const client = new Discord.Client()
-
 const axios = require('axios')
 const schedule = require('node-schedule')
-
 const getColors = require('get-image-colors')
+const cheerio = require('cheerio')
+const dayjs = require('dayjs')
+const relativeTime = require('dayjs/plugin/relativeTime')
+require('dayjs/locale/zh-tw')
+
+const client = new Discord.Client()
+
+dayjs.extend(relativeTime)
 
 const formatDate = (date) => {
   return `${date.getFullYear()} 年 ${date.getMonth() + 1} 月 ${date.getDate()} 日`
@@ -35,11 +39,78 @@ const exRateUpdate = () => {
   })
 }
 
+const sale = {
+  start: '',
+  end: '',
+  name: '',
+  text: ''
+}
+
+const fetchSale = () => {
+  axios.get('https://steamdb.info/sales/history/', {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.111 Safari/537.36'
+    }
+  }).then(response => {
+    const $ = cheerio.load(response.data)
+    sale.name = $('.wrapper-info.text-center.next-sale .sale-name').text()
+    // sale is live
+    if (!sale.name || sale.name.length === 0) {
+      sale.name = $('.wrapper-info.text-center.next-sale h2').text()
+    }
+    $('.span4.panel.panel-sale').each(function () {
+      if ($(this).find('.panel-body h4 a').text().trim() === sale.name) {
+        const dates = $(this).find('.panel-body div:not(.i.muted)').text().split(' — ')
+        sale.start = dates[0]
+        sale.end = dates[1]
+        let tmp = sale.start.split(' ')
+        sale.start += (tmp.length === 3) ? '' : ' ' + new Date().getFullYear()
+        sale.start += ' 10:00 am GMT-0800'
+        tmp = sale.end.split(' ')
+        sale.end += (tmp.length === 3) ? '' : ' ' + new Date().getFullYear()
+        sale.end += ' 10:00 am GMT-0800'
+        return false
+      }
+    })
+    sale.start = new Date(new Date(sale.start).toLocaleString('en-US', { timeZone: 'Asia/Taipei' })).getTime()
+    sale.end = new Date(new Date(sale.end).toLocaleString('en-US', { timeZone: 'Asia/Taipei' })).getTime()
+  })
+}
+
 exRateUpdate()
+fetchSale()
 
 schedule.scheduleJob('* * 0 * * *', function () {
   exRateUpdate()
+  fetchSale()
 })
+
+let showSale = true
+let changed = false
+setInterval(() => {
+  const now = new Date()
+  if (showSale) {
+    const time = now.getTime()
+    let text = ''
+    if (time < sale.start) {
+      text = `${sale.name} 將於 ${dayjs(sale.start).locale('zh-tw').fromNow()}開始`
+    } else if (time < sale.end) {
+      text = `${sale.name} 將於 ${dayjs(sale.start).locale('zh-tw').fromNow()}結束`
+    } else {
+      text = `${sale.name} 已結束`
+    }
+    client.user.setActivity(text, { type: 'LISTENING' })
+  } else {
+    client.user.setActivity('使用 !itadhelp 查詢指令', { type: 'LISTENING' })
+  }
+
+  if ((now.getMinutes() === 0 || now.getMinutes() === 30) && !changed) {
+    showSale = !showSale
+    changed = true
+  } else {
+    changed = false
+  }
+}, 1000)
 
 const embedColor = '#66c0f4'
 const embedColorError = '#ff2222'
@@ -212,6 +283,4 @@ client.on('message', msg => {
   }
 })
 
-client.login(process.env.DISCORD_TOKEN).then(() => {
-  client.user.setActivity('使用 !itadhelp 查詢指令', { type: 'LISTENING' })
-})
+client.login(process.env.DISCORD_TOKEN)
