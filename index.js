@@ -1,96 +1,46 @@
 require('dotenv').config()
 const Discord = require('discord.js')
-const axios = require('axios')
 const schedule = require('node-schedule')
 const getColors = require('get-image-colors')
-const cheerio = require('cheerio')
 const dayjs = require('dayjs')
 const relativeTime = require('dayjs/plugin/relativeTime')
 require('dayjs/locale/zh-tw')
+
+const searchITAD = require('./funcs/searchITAD')
+const getItadPlainByName = require('./funcs/getItadPlainByName')
+const exRateUpdate = require('./funcs/exRateUpdate')
+const getSteamInfoByPlain = require('./funcs/getSteamInfoByPlain')
+const formatDate = require('./funcs/formatDate')
+const fetchItad = require('./funcs/fetchItad')
+const fetchSteamApp = require('./funcs/fetchSteamApp')
+const fetchSteamDB = require('./funcs/fetchSteamDB')
+const fetchSteamPackage = require('./funcs/fetchSteamPackage')
+const fetchSale = require('./funcs/fetchSale')
 
 const client = new Discord.Client()
 
 dayjs.extend(relativeTime)
 
-const formatDate = (date) => {
-  return `${date.getFullYear()} 年 ${date.getMonth() + 1} 月 ${date.getDate()} 日`
-}
-
-const getItadPlainByName = (json, name) => json.data.list.filter((list) => list.title.trim().toUpperCase() === name.trim().toUpperCase())
-
-const getSteamInfoByPlain = (json, plain) => {
-  const steam = json.data.list.filter((list) => {
-    return list.plain === plain && list.shop.id === 'steam'
-  })
-  if (steam.length > 0) {
-    const steamUrl = steam[0].urls.buy
-    const info = steamUrl.match(/\/(app|sub|bundle|friendsthatplay|gamecards|recommended)\/([0-9]{1,7})/)
-    return info ? { id: parseInt(info[2], 10), type: info[1] } : { id: -1, type: 'null' }
-  } else return { id: -1, type: 'null' }
-}
-
 const itadShops = 'amazonus,bundlestars,chrono,direct2drive,dlgamer,dreamgame,fireflower,gamebillet,gamejolt,gamersgate,gamesplanet,gog,humblestore,humblewidgets,impulse,indiegalastore,indiegamestand,itchio,macgamestore,newegg,origin,paradox,savemi,silagames,squenix,steam,uplay,wingamestore'
 
 let exRateUSDTW = 30
 
-const exRateUpdate = () => {
-  axios.get('https://tw.rter.info/capi.php').then((res) => {
-    exRateUSDTW = Math.round(res.data.USDTWD.Exrate * 100) / 100
-  })
-}
-
-const sale = {
+let sale = {
   start: '',
   end: '',
   name: ''
 }
 
-const fetchSale = () => {
-  axios.get('https://steamdb.info/sales/history/', {
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.111 Safari/537.36'
-    }
-  }).then(response => {
-    const $ = cheerio.load(response.data)
-    sale.name = $('.wrapper-info.text-center.next-sale .sale-name').text()
-    // sale is live
-    if (!sale.name || sale.name.length === 0) {
-      sale.name = $('.wrapper-info.text-center.next-sale h2').text()
-    }
-    $('.span4.panel.panel-sale').each(function () {
-      if ($(this).find('.panel-body h4 a').text().trim() === sale.name) {
-        const dates = $(this).find('.panel-body div:not(.i.muted)').text().split(' — ')
-        sale.start = dates[0]
-        sale.end = dates[1]
-        let tmp = sale.start.split(' ')
-        sale.start += (tmp.length === 3) ? '' : ' ' + new Date().getFullYear()
-        sale.start += ' 10:00 am GMT-0800'
-        tmp = sale.end.split(' ')
-        sale.end += (tmp.length === 3) ? '' : ' ' + new Date().getFullYear()
-        sale.end += ' 10:00 am GMT-0800'
-        return false
-      }
-    })
-    sale.start = new Date(new Date(sale.start).toLocaleString('en-US', { timeZone: 'Asia/Taipei' })).getTime()
-    sale.end = new Date(new Date(sale.end).toLocaleString('en-US', { timeZone: 'Asia/Taipei' })).getTime()
-  }).catch(() => {
-    sale.start = ''
-    sale.end = ''
-    sale.name = ''
-  })
-}
-
-exRateUpdate()
-fetchSale()
-
-schedule.scheduleJob('0 0 0 * * *', function () {
-  exRateUpdate()
-  fetchSale()
+schedule.scheduleJob('0 0 0 * * *', async () => {
+  exRateUSDTW = await exRateUpdate()
+  sale = await fetchSale()
 })
 
-let showSale = true
+const showSale = true
 let changed = false
 let loggedIn = false
+
+// activity
 setInterval(() => {
   if (!loggedIn) return
   const now = new Date()
@@ -100,7 +50,7 @@ setInterval(() => {
     if (time < sale.start) {
       text = `${sale.name} 將於 ${dayjs(sale.start).locale('zh-tw').fromNow()}開始`
     } else if (time < sale.end) {
-      text = `${sale.name} 將於 ${dayjs(sale.start).locale('zh-tw').fromNow()}結束`
+      text = `${sale.name} 將於 ${dayjs(sale.end).locale('zh-tw').fromNow()}結束`
     } else {
       text = `${sale.name} 已結束`
     }
@@ -110,7 +60,7 @@ setInterval(() => {
   }
 
   if ((now.getMinutes() === 0 || now.getMinutes() === 30) && !changed) {
-    showSale = !showSale
+    // showSale = !showSale
     changed = true
   } else {
     changed = false
@@ -124,31 +74,26 @@ const getItadData = async (name) => {
   let embed = new Discord.MessageEmbed()
   let react = '❌'
   try {
-    const query = encodeURIComponent(name.trim())
-    let json = {}
-    let json2 = {}
-    let json3 = {}
-
     /* search game */
-    json = await axios.get(`https://api.isthereanydeal.com/v01/search/search/?key=${process.env.ITAD_KEY}&q=${query}&offset=&limit=200&region=us&country=US&shops=${itadShops}`)
-    const searchJson = json.data
-    const find = getItadPlainByName(searchJson, name)
+    /* search game */
+    const search = await searchITAD(name, itadShops)
+    const find = getItadPlainByName(search, name)
     if (find.length === 0) {
       embed.setColor(embedColorError)
-      if (searchJson.data.list.length === 0) embed.setTitle(`找不到符合 ${query} 的遊戲`)
+      if (search.length === 0) embed.setTitle(`找不到符合 ${name} 的遊戲`)
       else {
-        searchJson.data.list.sort((a, b) => a.title.length - b.title.length || a.title.localeCompare(b.title))
-        embed.setTitle(`找不到符合 ${query} 的遊戲，你是不是要找...\n\u200b`)
+        search.sort((a, b) => a.title.length - b.title.length || a.title.localeCompare(b.title))
+        embed.setTitle(`找不到符合 ${name} 的遊戲，你是不是要找...\n\u200b`)
 
         const addedGames = []
         // j = array index
         let j = 0
         // i = max 5 suggestions
         for (let i = 0; i < 5; i++) {
-          if (searchJson.data.list[j]) {
-            if ((j === 0) || (j > 0 && !addedGames.includes(searchJson.data.list[j].title))) {
-              addedGames.push(searchJson.data.list[j].title)
-              embed.addField(searchJson.data.list[j].title, `https://isthereanydeal.com/game/${searchJson.data.list[j].plain}`)
+          if (search[j]) {
+            if ((j === 0) || (j > 0 && !addedGames.includes(search[j].title))) {
+              addedGames.push(search[j].title)
+              embed.addField(search[j].title, `https://isthereanydeal.com/game/${search[j].plain}`)
             } else i--
           } else break
           j++
@@ -157,19 +102,14 @@ const getItadData = async (name) => {
     } else {
       const { plain } = find[0]
       const appTitle = find[0].title
-      const appInfo = getSteamInfoByPlain(searchJson, plain)
+      const appInfo = getSteamInfoByPlain(search, plain)
       embed.setTitle(appTitle)
       embed.setColor(embedColor)
 
-      json = axios.get(`https://api.isthereanydeal.com/v01/game/lowest/?key=${process.env.ITAD_KEY}&plains=${plain}&shops=${itadShops}`)
-      json2 = axios.get(`https://api.isthereanydeal.com/v01/game/prices/?key=${process.env.ITAD_KEY}&plains=${plain}&shops=${itadShops}`)
-      json3 = axios.get(`https://api.isthereanydeal.com/v01/game/bundles/?key=${process.env.ITAD_KEY}&plains=${plain}&expired=0`)
-      json = await json
-      json2 = await json2
-      json3 = await json3
-      const lowest = json.data.data[plain]
-      const current = json2.data.data[plain].list[0]
-      const bundle = json3.data.data[plain]
+      const itad = await fetchItad(plain, itadShops)
+      const lowest = itad[0].data[plain]
+      const current = itad[1].data[plain].list[0]
+      const bundle = itad[2].data[plain]
 
       const rDeal =
         `原價: ${current.price_old} USD / ${Math.round(current.price_old * exRateUSDTW * 100) / 100} TWD\n` +
@@ -206,30 +146,25 @@ const getItadData = async (name) => {
 
           embed.setImage(replyImage)
 
-          json = await axios.get(`http://store.steampowered.com/api/appdetails/?appids=${appInfo.id}&cc=tw&filters=price_overview`)
-          const steamOV = json.data
+          const steamOV = await fetchSteamApp(appInfo.id)
 
           if (steamOV[appInfo.id].success && typeof steamOV[appInfo.id].data === 'object') {
             const price = steamOV[appInfo.id].data.price_overview
             rSteam += `原價: ${price.initial_formatted.length === 0 ? price.final_formatted : price.initial_formatted}, \n` +
               `目前價格: ${price.final_formatted}, -${price.discount_percent}%`
 
-            json = await axios.get(`https://steamdb.info/api/ExtensionGetPrice/?appid=${appInfo.id}&currency=TWD`, {
-              headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.111 Safari/537.36'
-              }
-            })
-            const steamLow = json.data
-            const lowestRegex = /(?<date1>\d+\s[A-Za-z]+\s+\d+)\s\((?<times>\d+)\stimes,\sfirst\son\s(?<date2>\d+\s[A-Za-z]+\s+\d+)\)/
-            const lowestResults = steamLow.data.lowest.date.match(lowestRegex)
-            let lowestStr = ''
-            if (lowestResults) lowestStr += `最近一次為 ${formatDate(new Date(lowestResults.groups.date1))}, 從 ${formatDate(new Date(lowestResults.groups.date2))}開始共出現 ${lowestResults.groups.times} 次`
-            else lowestStr += formatDate(new Date(steamLow.data.lowest.date))
-            if (steamLow.success) rSteam += `\n歷史最低: ${steamLow.data.lowest.price}, -${steamLow.data.lowest.discount}%, ${lowestStr}\n`
+            const steamLow = await fetchSteamDB(appInfo.id)
+            if (Object.keys(steamLow).length > 0) {
+              const lowestRegex = /(?<date1>\d+\s[A-Za-z]+\s+\d+)\s\((?<times>\d+)\stimes,\sfirst\son\s(?<date2>\d+\s[A-Za-z]+\s+\d+)\)/
+              const lowestResults = steamLow.data.lowest.date.match(lowestRegex)
+              let lowestStr = ''
+              if (lowestResults) lowestStr += `最近一次為 ${formatDate(new Date(lowestResults.groups.date1))}, 從 ${formatDate(new Date(lowestResults.groups.date2))}開始共出現 ${lowestResults.groups.times} 次`
+              else lowestStr += formatDate(new Date(steamLow.data.lowest.date))
+              if (steamLow.success) rSteam += `\n歷史最低: ${steamLow.data.lowest.price}, -${steamLow.data.lowest.discount}%, ${lowestStr}\n`
+            }
           }
         } else if (appInfo.type === 'sub') {
-          json = await axios.get(`https://store.steampowered.com/api/packagedetails/?packageids=${appInfo.id}&cc=tw`)
-          const steamOV = json.data
+          const steamOV = await fetchSteamPackage(appInfo.id)
           if (steamOV[appInfo.id].success) {
             const { price } = steamOV[appInfo.id].data
             rSteam += `原價:  NT$ ${price.initial / 100}\n` +
@@ -288,6 +223,8 @@ client.on('message', msg => {
   }
 })
 
-client.login(process.env.DISCORD_TOKEN).then(() => {
+client.login(process.env.DISCORD_TOKEN).then(async () => {
   loggedIn = true
+  exRateUSDTW = await exRateUpdate()
+  sale = await fetchSale()
 })
