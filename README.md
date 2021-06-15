@@ -19,6 +19,9 @@ Click [here](https://discordapp.com/oauth2/authorize?client_id=63490254168732470
 
     # Loading Emoji ID
     LOADING_EMOJI=""
+
+    # If "true", print detail axios error object
+    ERROR="false"
   ```
 
 - Run `npm install` to install dependencies.
