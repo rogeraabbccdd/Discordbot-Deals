@@ -17,7 +17,16 @@ const fetchSteamDB = require('./funcs/fetchSteamDB')
 const fetchSteamPackage = require('./funcs/fetchSteamPackage')
 const fetchSale = require('./funcs/fetchSale')
 
-const client = new Discord.Client()
+const client = new Discord.Client({
+  intents: [
+    Discord.Intents.FLAGS.GUILDS,
+    Discord.Intents.FLAGS.GUILD_MESSAGES,
+    Discord.Intents.FLAGS.GUILD_MESSAGE_REACTIONS,
+    Discord.Intents.FLAGS.DIRECT_MESSAGES,
+    Discord.Intents.FLAGS.DIRECT_MESSAGE_REACTIONS,
+    Discord.Intents.FLAGS.DIRECT_MESSAGE_TYPING
+  ]
+})
 
 dayjs.extend(relativeTime)
 
@@ -39,6 +48,14 @@ schedule.scheduleJob('0 0 0 * * *', async () => {
 const showSale = true
 let changed = false
 let loggedIn = false
+
+const helpReply =
+':desktop:  機器人指令\n' +
+'• `!itad 遊戲名稱` - 查詢遊戲資訊\n' +
+'\n:link:  相關連結\n' +
+'• 巴哈文章: https://forum.gamer.com.tw/C.php?bsn=60599&snA=27046\n' +
+'• 邀請連結: https://discordapp.com/oauth2/authorize?client_id=634902541687324702&scope=bot&permissions=28832\n' +
+'• 機器人原始碼: https://github.com/rogeraabbccdd/Discordbot-Deals'
 
 // activity
 setInterval(() => {
@@ -193,20 +210,50 @@ const getItadData = async (name) => {
 
 client.on('ready', () => {
   console.log(`Logged in as ${client.user.tag}!`)
+
+  const clientGuilds = client.guilds.cache.map(guild => guild.id)
+  for (const clientGuild of clientGuilds) {
+    const guild = client.channels.cache.get(clientGuild)
+    const commands = guild ? guild.commands : client.application.commands
+    if (!commands) continue
+    commands.create({
+      name: 'itadhelp',
+      description: 'itad 機器人使用說明'
+    })
+    commands.create({
+      name: 'itad',
+      description: 'itad 查詢遊戲資料',
+      options: [
+        {
+          name: 'game',
+          description: '遊戲名稱',
+          required: true,
+          type: Discord.Constants.ApplicationCommandOptionTypes.STRING
+        }
+      ]
+    })
+  }
+})
+
+client.on('interactionCreate', async interaction => {
+  if (!interaction.isCommand()) return
+
+  const { commandName, options } = interaction
+  if (commandName === 'itadhelp') {
+    interaction.reply({ content: helpReply })
+  } else if (commandName === 'itad') {
+    await interaction.deferReply()
+    const name = options.getString('game')
+    const data = await getItadData(name)
+    await interaction.editReply({ embeds: [data.embed] })
+  }
 })
 
 client.on('message', msg => {
   if (msg.content && !msg.author.bot) {
     if (msg.content === '!itadhelp') {
       msg.react(process.env.LOADING_EMOJI.toString())
-      const reply =
-        ':desktop:  機器人指令\n' +
-        '• `!itad 遊戲名稱` - 查詢遊戲資訊\n' +
-        '\n:link:  相關連結\n' +
-        '• 巴哈文章: https://forum.gamer.com.tw/C.php?bsn=60599&snA=27046\n' +
-        '• 邀請連結: https://discordapp.com/oauth2/authorize?client_id=634902541687324702&scope=bot&permissions=28832\n' +
-        '• 機器人原始碼: https://github.com/rogeraabbccdd/Discordbot-Deals'
-      msg.channel.send(reply)
+      msg.channel.send(helpReply)
       msg.reactions.removeAll().then(() => {
         msg.react('✅').catch()
       }).catch()
@@ -214,7 +261,7 @@ client.on('message', msg => {
       msg.react(process.env.LOADING_EMOJI.toString())
       const name = msg.content.split('!itad ')[1]
       getItadData(name).then((data) => {
-        msg.channel.send(data.embed)
+        msg.channel.send({ embeds: [data.embed] })
         msg.reactions.removeAll().then(() => {
           msg.react(data.react).catch()
         }).catch()
