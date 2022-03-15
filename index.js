@@ -18,6 +18,7 @@ const fetchSteamPackage = require('./funcs/fetchSteamPackage')
 const fetchSale = require('./funcs/fetchSale')
 
 const client = new Discord.Client({
+  partials: ['CHANNEL'],
   intents: [
     Discord.Intents.FLAGS.GUILDS,
     Discord.Intents.FLAGS.GUILD_MESSAGES,
@@ -252,19 +253,23 @@ client.on('interactionCreate', async interaction => {
 client.on('message', msg => {
   if (msg.content && !msg.author.bot) {
     if (msg.content === '!itadhelp') {
-      msg.react(process.env.LOADING_EMOJI.toString())
+      if (msg.channel.type !== 'DM') msg.react(process.env.LOADING_EMOJI.toString())
       msg.channel.send(helpReply)
-      msg.reactions.removeAll().then(() => {
-        msg.react('✅').catch()
-      }).catch()
+      if (msg.channel.type !== 'DM') {
+        msg.reactions.removeAll().then(() => {
+          msg.react('✅').catch()
+        }).catch()
+      }
     } else if (msg.content.substring(0, 6) === '!itad ') {
-      msg.react(process.env.LOADING_EMOJI.toString())
+      if (msg.channel.type !== 'DM') msg.react(process.env.LOADING_EMOJI.toString())
       const name = msg.content.split('!itad ')[1]
       getItadData(name).then((data) => {
         msg.channel.send({ embeds: [data.embed] })
-        msg.reactions.removeAll().then(() => {
-          msg.react(data.react).catch()
-        }).catch()
+        if (msg.channel.type !== 'DM') {
+          msg.reactions.removeAll().then(() => {
+            msg.react(data.react).catch()
+          }).catch()
+        }
       })
     }
   }
