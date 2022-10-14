@@ -1,5 +1,5 @@
 require('dotenv').config()
-const Discord = require('discord.js')
+const { Client, GatewayIntentBits, MessageEmbed, RichEmbed, ApplicationCommandOptionType } = require('discord.js')
 const schedule = require('node-schedule')
 const getColors = require('get-image-colors')
 const dayjs = require('dayjs')
@@ -17,15 +17,14 @@ const fetchSteamDB = require('./funcs/fetchSteamDB')
 const fetchSteamPackage = require('./funcs/fetchSteamPackage')
 const fetchSale = require('./funcs/fetchSale')
 
-const client = new Discord.Client({
-  partials: ['CHANNEL'],
+const client = new Client({
   intents: [
-    Discord.Intents.FLAGS.GUILDS,
-    Discord.Intents.FLAGS.GUILD_MESSAGES,
-    Discord.Intents.FLAGS.GUILD_MESSAGE_REACTIONS,
-    Discord.Intents.FLAGS.DIRECT_MESSAGES,
-    Discord.Intents.FLAGS.DIRECT_MESSAGE_REACTIONS,
-    Discord.Intents.FLAGS.DIRECT_MESSAGE_TYPING
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.GuildMessageReactions,
+    GatewayIntentBits.DirectMessages,
+    GatewayIntentBits.DirectMessageReactions,
+    GatewayIntentBits.DirectMessageTyping
   ]
 })
 
@@ -89,7 +88,7 @@ const embedColor = '#66c0f4'
 const embedColorError = '#ff2222'
 
 const getItadData = async (name) => {
-  let embed = new Discord.MessageEmbed()
+  let embed = new MessageEmbed()
   let react = '❌'
   try {
     /* search game */
@@ -204,7 +203,7 @@ const getItadData = async (name) => {
   } catch (err) {
     console.log(err)
     react = '❌'
-    embed = new Discord.RichEmbed().setColor(embedColorError).setTitle('遊戲資料查詢失敗，請再試一次')
+    embed = new RichEmbed().setColor(embedColorError).setTitle('遊戲資料查詢失敗，請再試一次')
   }
   return { embed, react }
 }
@@ -229,7 +228,7 @@ client.on('ready', () => {
           name: 'game',
           description: '遊戲名稱',
           required: true,
-          type: Discord.Constants.ApplicationCommandOptionTypes.STRING
+          type: ApplicationCommandOptionType.String
         }
       ]
     })
