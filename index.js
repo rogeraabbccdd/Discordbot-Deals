@@ -280,3 +280,18 @@ client.login(process.env.DISCORD_TOKEN).then(async () => {
   exRateUSDTW = await exRateUpdate()
   sale = await fetchSale()
 })
+
+if (process.env.WEB) {
+  const express = require('express')
+  const https = require('https')
+  const app = express()
+  app.listen(process.env.PORT || 3000, () => {
+    console.log('Web service started')
+  })
+  app.get('/', (req, res) => {
+    res.send('Hello World')
+  })
+  setInterval(() => {
+    https.get(process.env.WEB)
+  }, 1000 * 60 * 5)
+}
