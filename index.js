@@ -1,5 +1,5 @@
 require('dotenv').config()
-const { Client, GatewayIntentBits, MessageEmbed, RichEmbed, ApplicationCommandOptionType } = require('discord.js')
+const { Client, GatewayIntentBits, MessageEmbed, RichEmbed } = require('discord.js')
 const schedule = require('node-schedule')
 const getColors = require('get-image-colors')
 const dayjs = require('dayjs')
@@ -16,6 +16,7 @@ const fetchSteamApp = require('./funcs/fetchSteamApp')
 const fetchSteamDB = require('./funcs/fetchSteamDB')
 const fetchSteamPackage = require('./funcs/fetchSteamPackage')
 const fetchSale = require('./funcs/fetchSale')
+const createCommands = require('./funcs/createCommands')
 
 const client = new Client({
   intents: [
@@ -216,23 +217,13 @@ client.on('ready', () => {
     const guild = client.channels.cache.get(clientGuild)
     const commands = guild ? guild.commands : client.application.commands
     if (!commands) continue
-    commands.create({
-      name: 'itadhelp',
-      description: 'itad 機器人使用說明'
-    })
-    commands.create({
-      name: 'itad',
-      description: 'itad 查詢遊戲資料',
-      options: [
-        {
-          name: 'game',
-          description: '遊戲名稱',
-          required: true,
-          type: ApplicationCommandOptionType.String
-        }
-      ]
-    })
+    createCommands(commands)
   }
+})
+
+client.on('guildCreate', guild => {
+  const commands = guild ? guild.commands : client.application.commands
+  createCommands(commands)
 })
 
 client.on('interactionCreate', async interaction => {
