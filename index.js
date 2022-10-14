@@ -231,7 +231,7 @@ client.on('interactionCreate', async interaction => {
 
   const { commandName, options } = interaction
   if (commandName === 'itadhelp') {
-    interaction.reply({ content: helpReply })
+    await interaction.reply({ content: helpReply })
   } else if (commandName === 'itad') {
     await interaction.deferReply()
     const name = options.getString('game')
