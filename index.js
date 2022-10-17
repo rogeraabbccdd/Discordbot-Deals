@@ -52,7 +52,7 @@ let loggedIn = false
 
 const helpReply =
 ':desktop:  機器人指令\n' +
-'• `!itad 遊戲名稱` - 查詢遊戲資訊\n' +
+'• `/itad 遊戲名稱` - 查詢遊戲資訊\n' +
 '\n:link:  相關連結\n' +
 '• 巴哈文章: https://forum.gamer.com.tw/C.php?bsn=60599&snA=27046\n' +
 '• 邀請連結: https://discordapp.com/oauth2/authorize?client_id=634902541687324702&scope=bot&permissions=28832\n' +
@@ -74,7 +74,7 @@ setInterval(() => {
     }
     client.user.setActivity(text, { type: 'LISTENING' })
   } else {
-    client.user.setActivity('使用 !itadhelp 查詢指令', { type: 'LISTENING' })
+    client.user.setActivity('使用 /itadhelp 查詢指令', { type: 'LISTENING' })
   }
 
   if ((now.getMinutes() === 0 || now.getMinutes() === 30) && !changed) {
