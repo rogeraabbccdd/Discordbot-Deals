@@ -230,14 +230,17 @@ client.on('interactionCreate', async interaction => {
   if (!interaction.isCommand()) return
 
   const { commandName, options } = interaction
-  if (commandName === 'itadhelp') {
-    await interaction.reply({ content: helpReply })
-  } else if (commandName === 'itad') {
-    await interaction.deferReply()
-    const name = options.getString('game')
-    const data = await getItadData(name)
-    await interaction.editReply({ embeds: [data.embed] })
-  }
+
+  try {
+    if (commandName === 'itadhelp') {
+      await interaction.reply({ content: helpReply })
+    } else if (commandName === 'itad') {
+      await interaction.deferReply()
+      const name = options.getString('game')
+      const data = await getItadData(name)
+      await interaction.editReply({ embeds: [data.embed] })
+    }
+  } catch (error) {}
 })
 
 client.on('message', msg => {
