@@ -257,31 +257,6 @@ client.on('interactionCreate', async interaction => {
   }
 })
 
-client.on('message', msg => {
-  if (msg.content && !msg.author.bot) {
-    if (msg.content === '!itadhelp') {
-      if (msg.channel.type !== 'DM') msg.react(process.env.LOADING_EMOJI.toString())
-      msg.channel.send(helpReply)
-      if (msg.channel.type !== 'DM') {
-        msg.reactions.removeAll().then(() => {
-          msg.react('✅').catch()
-        }).catch()
-      }
-    } else if (msg.content.substring(0, 6) === '!itad ') {
-      if (msg.channel.type !== 'DM') msg.react(process.env.LOADING_EMOJI.toString())
-      const name = msg.content.split('!itad ')[1]
-      getItadData(name).then((data) => {
-        msg.channel.send({ embeds: [data.embed] })
-        if (msg.channel.type !== 'DM') {
-          msg.reactions.removeAll().then(() => {
-            msg.react(data.react).catch()
-          }).catch()
-        }
-      })
-    }
-  }
-})
-
 client.login(process.env.DISCORD_TOKEN).then(async () => {
   loggedIn = true
   exRateUSDTW = await exRateUpdate()
