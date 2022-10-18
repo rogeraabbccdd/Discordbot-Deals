@@ -1,5 +1,5 @@
 require('dotenv').config()
-const { Client, GatewayIntentBits, MessageEmbed, RichEmbed } = require('discord.js')
+const { Client, GatewayIntentBits, EmbedBuilder } = require('discord.js')
 const schedule = require('node-schedule')
 const getColors = require('get-image-colors')
 const dayjs = require('dayjs')
@@ -72,9 +72,9 @@ setInterval(() => {
     } else {
       text = `${sale.name} 已結束`
     }
-    client.user.setActivity(text, { type: 'LISTENING' })
+    client.user.setPresence({ activities: [{ name: text }], status: 'LISTENING' })
   } else {
-    client.user.setActivity('使用 /itadhelp 查詢指令', { type: 'LISTENING' })
+    client.user.setPresence({ activities: [{ name: '使用 /itadhelp 查詢指令' }], status: 'LISTENING' })
   }
 
   if ((now.getMinutes() === 0 || now.getMinutes() === 30) && !changed) {
@@ -89,7 +89,7 @@ const embedColor = '#66c0f4'
 const embedColorError = '#ff2222'
 
 const getItadData = async (name) => {
-  let embed = new MessageEmbed()
+  let embed = new EmbedBuilder()
   let react = '❌'
   try {
     /* search game */
@@ -111,7 +111,9 @@ const getItadData = async (name) => {
           if (search[j]) {
             if ((j === 0) || (j > 0 && !addedGames.includes(search[j].title))) {
               addedGames.push(search[j].title)
-              embed.addField(search[j].title, `https://isthereanydeal.com/game/${search[j].plain}`)
+              embed.addFields([
+                { name: 'search[j].title', value: `https://isthereanydeal.com/game/${search[j].plain}` }
+              ])
             } else i--
           } else break
           j++
@@ -192,19 +194,29 @@ const getItadData = async (name) => {
         }
       }
       embed
-        .addField('isthereanydeal', rDeal + '\n\u200b')
-        .addField('入包資訊', rBundle + '\n\u200b')
+        .addFields([
+          { name: 'isthereanydeal', value: rDeal + '\n\u200b' }
+        ])
+        .addFields([
+          { name: '入包資訊', value: rBundle + '\n\u200b' }
+        ])
 
-      if (rSteam.length > 0) embed.addField('Steam', rSteam + '\n\u200b')
+      if (rSteam.length > 0) {
+        embed.addFields([
+          { name: 'Steam', value: rSteam + '\n\u200b' }
+        ])
+      }
 
-      embed.addField('更多資訊', rInfo)
+      embed.addFields([
+        { name: '更多資訊', value: rInfo }
+      ])
 
       react = '✅'
     }
   } catch (err) {
     console.log(err)
     react = '❌'
-    embed = new RichEmbed().setColor(embedColorError).setTitle('遊戲資料查詢失敗，請再試一次')
+    embed = new EmbedBuilder().setColor(embedColorError).setTitle('遊戲資料查詢失敗，請再試一次')
   }
   return { embed, react }
 }
@@ -240,7 +252,9 @@ client.on('interactionCreate', async interaction => {
       const data = await getItadData(name)
       await interaction.editReply({ embeds: [data.embed] })
     }
-  } catch (error) {}
+  } catch (error) {
+    if (process.env.ERROR === 'true') console.log(error)
+  }
 })
 
 client.on('message', msg => {
