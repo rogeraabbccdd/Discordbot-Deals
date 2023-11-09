@@ -93,7 +93,6 @@ const getItadData = async (name) => {
   let react = '❌'
   try {
     /* search game */
-    /* search game */
     const search = await searchITAD(name, itadShops)
     const find = getItadPlainByName(search, name)
     if (find.length === 0) {
@@ -112,7 +111,7 @@ const getItadData = async (name) => {
             if ((j === 0) || (j > 0 && !addedGames.includes(search[j].title))) {
               addedGames.push(search[j].title)
               embed.addFields([
-                { name: 'search[j].title', value: `https://isthereanydeal.com/game/${search[j].plain}` }
+                { name: search[j].title, value: `https://isthereanydeal.com/game/${search[j].plain}` }
               ])
             } else i--
           } else break
