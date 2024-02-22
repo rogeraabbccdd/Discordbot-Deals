@@ -4,7 +4,11 @@ module.exports = async (id) => {
   let result = {}
 
   try {
-    const { data } = await axios.get(`https://steamdb.info/api/ExtensionGetPrice/?appid=${id}&currency=TWD`, {
+    const { data } = await axios.get('https://steamdb.info/api/ExtensionGetPrice/', {
+      params: {
+        appid: id,
+        currency: 'TWD'
+      },
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36',
         'X-Requested-With': 'SteamDB'

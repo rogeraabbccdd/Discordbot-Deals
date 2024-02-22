@@ -1,12 +1,16 @@
 const axios = require('axios')
 
-module.exports = async (name, itadShops) => {
-  const query = encodeURIComponent(name.trim())
+module.exports = async (name) => {
   let result = []
 
   try {
-    const { data } = await axios.get(`https://api.isthereanydeal.com/v01/search/search/?key=${process.env.ITAD_KEY}&q=${query}&offset=&limit=200&region=us&country=US&shops=${itadShops}`)
-    result = data.data.list
+    const { data } = await axios.get('https://api.isthereanydeal.com/games/search/v1', {
+      params: {
+        key: process.env.ITAD_KEY,
+        title: name
+      }
+    })
+    result = data
   } catch (error) {
     console.log('Search Error')
     if (process.env.ERROR === 'true') console.log(error)

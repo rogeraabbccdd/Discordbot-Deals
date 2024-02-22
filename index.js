@@ -5,16 +5,13 @@ const getColors = require('get-image-colors')
 const dayjs = require('dayjs')
 const relativeTime = require('dayjs/plugin/relativeTime')
 require('dayjs/locale/zh-tw')
-
 const searchITAD = require('./funcs/searchITAD')
-const getItadPlainByName = require('./funcs/getItadPlainByName')
+const findNameInResults = require('./funcs/findNameInResults')
 const exRateUpdate = require('./funcs/exRateUpdate')
-const getSteamInfoByPlain = require('./funcs/getSteamInfoByPlain')
 const formatDate = require('./funcs/formatDate')
 const fetchItad = require('./funcs/fetchItad')
 const fetchSteamApp = require('./funcs/fetchSteamApp')
 const fetchSteamDB = require('./funcs/fetchSteamDB')
-const fetchSteamPackage = require('./funcs/fetchSteamPackage')
 const fetchSale = require('./funcs/fetchSale')
 const createCommands = require('./funcs/createCommands')
 
@@ -31,8 +28,6 @@ const client = new Client({
 
 dayjs.extend(relativeTime)
 
-const itadShops = 'amazonus,bundlestars,chrono,direct2drive,dlgamer,dreamgame,fireflower,gamebillet,gamejolt,gamersgate,gamesplanet,gog,humblestore,humblewidgets,impulse,indiegalastore,indiegamestand,itchio,macgamestore,newegg,origin,paradox,savemi,silagames,squenix,steam,uplay,wingamestore'
-
 let exRateUSDTW = 30
 
 let sale = {
@@ -46,7 +41,7 @@ schedule.scheduleJob('0 0 0 * * *', async () => {
   sale = await fetchSale()
 })
 
-const showSale = true
+const showSale = false
 let changed = false
 let loggedIn = false
 
@@ -93,13 +88,13 @@ const getItadData = async (name) => {
   let react = '❌'
   try {
     /* search game */
-    const search = await searchITAD(name, itadShops)
-    const find = getItadPlainByName(search, name)
-    if (find.length === 0) {
+    const apps = await searchITAD(name)
+    const app = findNameInResults(apps, name)
+    if (!app) {
       embed.setColor(embedColorError)
-      if (search.length === 0) embed.setTitle(`找不到符合 ${name} 的遊戲`)
+      if (apps.length === 0) embed.setTitle(`找不到符合 ${name} 的遊戲`)
       else {
-        search.sort((a, b) => a.title.length - b.title.length || a.title.localeCompare(b.title))
+        apps.sort((a, b) => a.title.length - b.title.length || a.title.localeCompare(b.title))
         embed.setTitle(`找不到符合 ${name} 的遊戲，你是不是要找...\n\u200b`)
 
         const addedGames = []
@@ -107,11 +102,11 @@ const getItadData = async (name) => {
         let j = 0
         // i = max 5 suggestions
         for (let i = 0; i < 5; i++) {
-          if (search[j]) {
-            if ((j === 0) || (j > 0 && !addedGames.includes(search[j].title))) {
-              addedGames.push(search[j].title)
+          if (apps[j]) {
+            if ((j === 0) || (j > 0 && !addedGames.includes(apps[j].title))) {
+              addedGames.push(apps[j].title)
               embed.addFields([
-                { name: search[j].title, value: `https://isthereanydeal.com/game/${search[j].plain}` }
+                { name: apps[j].title, value: `https://isthereanydeal.com/game/${apps[j].plain}` }
               ])
             } else i--
           } else break
@@ -119,85 +114,79 @@ const getItadData = async (name) => {
         }
       }
     } else {
-      const { plain } = find[0]
-      const appTitle = find[0].title
-      const appInfo = getSteamInfoByPlain(search, plain)
-      embed.setTitle(appTitle)
-      embed.setColor(embedColor)
+      // const { plain } = find[0]
+      // const appTitle = find[0].title
+      // const appInfo = getSteamInfoByPlain(search, plain)
+      // embed.setTitle(appTitle)
+      // embed.setColor(embedColor)
 
-      const itad = await fetchItad(plain, itadShops)
-      const lowest = itad[0].data[plain]
-      const current = itad[1].data[plain].list[0]
-      const bundle = itad[2].data[plain]
+      const appResults = await fetchItad(app.id)
+      const appInfo = appResults[0]
+      // This is an empty array in some games, e.g. "Muse Dash"
+      const appPrice = appResults[1]?.[0]?.deals?.sort((a, b) => b.cut - a.cut)?.[0]
+      const appLowest = appResults[2][0].lows.sort((a, b) => b.cut - a.cut)[0]
+      const appHistory = appResults[3][0].low
+      const appBundles = appResults[4]
 
-      const rDeal =
-        `原價: ${current.price_old} USD / ${Math.round(current.price_old * exRateUSDTW * 100) / 100} TWD\n` +
-        `目前最低: ${current.price_new} USD / ${Math.round(current.price_new * exRateUSDTW * 100) / 100} TWD, -${current.price_cut}%, 在 ${current.shop.name}\n` +
-        `歷史最低: ${lowest.price} USD / ${Math.round(lowest.price * exRateUSDTW * 100) / 100} TWD, -${lowest.cut}%, ${formatDate(new Date(lowest.added * 1000))}在 ${lowest.shop.name}\n` +
-        `${current.url}`
+      let rDeal =
+        `原價: ${appLowest.regular.amount} USD / ${Math.round(appLowest.regular.amount * exRateUSDTW * 100) / 100} TWD\n` +
+        `目前最低: ${appLowest.price.amount} USD / ${Math.round(appLowest.price.amount * exRateUSDTW * 100) / 100} TWD, -${appLowest.cut}%, 在 ${appLowest.shop.name}`
 
-      let rInfo = `https://isthereanydeal.com/game/${plain}/info/\n`
+      rDeal += `\n歷史最低: ${appHistory.price.amount} USD / ${Math.round(appHistory.price.amount * exRateUSDTW * 100) / 100} TWD, -${appHistory.cut}%, ${formatDate(new Date(appHistory.timestamp))}在 ${appHistory.shop.name}`
 
-      let rBundle = `總入包次數: ${bundle.total}`
+      if (appPrice) {
+        rDeal += '\n' + appPrice.url
+      }
+      let rInfo = `https://isthereanydeal.com/game/${app.slug}/info/\n`
 
-      if (bundle.list.length > 0) {
+      /* bundles */
+      let rBundle = `總入包次數: ${appBundles.length}`
+      const activeBundles = appBundles.filter(bundle => new Date(bundle.expiry) > Date.now())
+      if (activeBundles.length > 0) {
         rBundle += '\n目前入包:\n'
-        for (const b of bundle.list) {
-          rBundle += `${b.title}, ~${formatDate(new Date(b.expiry * 1000))}\n${b.url}`
+        for (const bundle of appBundles) {
+          rBundle += `${bundle.title}, ~${formatDate(new Date(bundle.expiry))}\n${bundle.url}`
         }
       }
 
       let rSteam = ''
 
       /* is steam */
-      if (appInfo.id !== -1) {
-        rInfo += `https://store.steampowered.com/${appInfo.type}/${appInfo.id}/\n` +
-          `https://steamdb.info/${appInfo.type}/${appInfo.id}/`
+      if (appInfo.appid) {
+        rInfo += `https://store.steampowered.com/app/${appInfo.appid}/\n` +
+          `https://steamdb.info/app/${appInfo.appid}/`
 
-        if (appInfo.type === 'app') {
-          const replyImage = `https://steamcdn-a.akamaihd.net/steam/apps/${appInfo.id}/header.jpg`
-          let embedColorApp = embedColor
-          getColors(replyImage).then(colors => {
-            colors = colors.map(color => color.hex())
-            embedColorApp = colors[0]
-            embed.setColor(embedColorApp)
-          })
+        const replyImage = `https://steamcdn-a.akamaihd.net/steam/apps/${appInfo.appid}/header.jpg`
+        let embedColorApp = embedColor
+        getColors(replyImage).then(colors => {
+          colors = colors.map(color => color.hex())
+          embedColorApp = colors[0]
+          embed.setColor(embedColorApp)
+        })
 
-          embed.setImage(replyImage)
+        embed.setImage(replyImage)
 
-          const steamOV = await fetchSteamApp(appInfo.id)
+        const steamOV = await fetchSteamApp(appInfo.appid)
 
-          if (steamOV[appInfo.id].success && typeof steamOV[appInfo.id].data === 'object') {
-            const price = steamOV[appInfo.id].data.price_overview
-            rSteam += `原價: ${price.initial_formatted.length === 0 ? price.final_formatted : price.initial_formatted}, \n` +
+        if (steamOV[appInfo.appid].success && typeof steamOV[appInfo.appid].data === 'object') {
+          const price = steamOV[appInfo.appid].data.price_overview
+          rSteam += `原價: ${price.initial_formatted.length === 0 ? price.final_formatted : price.initial_formatted}, \n` +
               `目前價格: ${price.final_formatted}, -${price.discount_percent}%`
 
-            const steamLow = await fetchSteamDB(appInfo.id)
-            if (Object.keys(steamLow).length > 0) {
-              const lowestRegex = /(?<date1>\d+\s[A-Za-z]+\s+\d+)\s\((?<times>\d+)\stimes,\sfirst\son\s(?<date2>\d+\s[A-Za-z]+\s+\d+)\)/
-              const lowestResults = steamLow.data.lowest.date.match(lowestRegex)
-              let lowestStr = ''
-              if (lowestResults) lowestStr += `最近一次為 ${formatDate(new Date(lowestResults.groups.date1))}, 從 ${formatDate(new Date(lowestResults.groups.date2))}開始共出現 ${lowestResults.groups.times} 次`
-              else lowestStr += formatDate(new Date(steamLow.data.lowest.date))
-              if (steamLow.success) rSteam += `\n歷史最低: ${steamLow.data.lowest.price}, -${steamLow.data.lowest.discount}%, ${lowestStr}\n`
-            }
-          }
-        } else if (appInfo.type === 'sub') {
-          const steamOV = await fetchSteamPackage(appInfo.id)
-          if (steamOV[appInfo.id].success) {
-            const { price } = steamOV[appInfo.id].data
-            rSteam += `原價:  NT$ ${price.initial / 100}\n` +
-              `單買原價:  NT$ ${price.individual / 100}\n` +
-              `目前價格:  NT$ ${price.final / 100}, -${price.discount_percent}%`
+          const steamLow = await fetchSteamDB(appInfo.appid)
+          if (Object.keys(steamLow).length > 0) {
+            const lowestRegex = /(?<date1>\d+\s[A-Za-z]+\s+\d+)\s\((?<times>\d+)\stimes,\sfirst\son\s(?<date2>\d+\s[A-Za-z]+\s+\d+)\)/
+            const lowestResults = steamLow.data.lowest.date.match(lowestRegex)
+            let lowestStr = ''
+            if (lowestResults) lowestStr += `最近一次為 ${formatDate(new Date(lowestResults.groups.date1))}, 從 ${formatDate(new Date(lowestResults.groups.date2))}開始共出現 ${lowestResults.groups.times} 次`
+            else lowestStr += formatDate(new Date(steamLow.data.lowest.date))
+            if (steamLow.success) rSteam += `\n歷史最低: ${steamLow.data.lowest.price}, -${steamLow.data.lowest.discount}%, ${lowestStr}`
           }
         }
       }
       embed
         .addFields([
-          { name: 'isthereanydeal', value: rDeal + '\n\u200b' }
-        ])
-        .addFields([
-          { name: '入包資訊', value: rBundle + '\n\u200b' }
+          { name: 'isthereanydeal 目前最低', value: rDeal + '\n\u200b' }
         ])
 
       if (rSteam.length > 0) {
@@ -205,7 +194,9 @@ const getItadData = async (name) => {
           { name: 'Steam', value: rSteam + '\n\u200b' }
         ])
       }
-
+      embed.addFields([
+        { name: '入包資訊', value: rBundle + '\n\u200b' }
+      ])
       embed.addFields([
         { name: '更多資訊', value: rInfo }
       ])
