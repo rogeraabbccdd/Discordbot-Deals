@@ -84,7 +84,7 @@ module.exports = async (value, type) => {
       // This is an empty array in some games, e.g. "Muse Dash"
       const appPrice = appResults[1]?.[0]?.deals?.sort((a, b) => b.cut - a.cut)?.[0]
       // This is an empty array in some games, e.g. SteamAppID 999
-      const appLowest = appResults[2]?.[0]?.deals?.sort((a, b) => b.cut - a.cut)?.[0]
+      const appLowest = appResults[2]?.[0]?.lows?.sort((a, b) => b.cut - a.cut)?.[0]
       const appHistory = appResults[3]?.[0]?.low
       const appBundles = appResults[4]
 
