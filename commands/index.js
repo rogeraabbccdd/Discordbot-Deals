@@ -1,6 +1,7 @@
 const { REST, Routes } = require('discord.js')
 const commandHelp = require('../commands/help')
 const commandItad = require('../commands/itad')
+const commandItadId = require('../commands/itadid')
 
 const rest = new REST().setToken(process.env.DISCORD_TOKEN)
 
@@ -13,7 +14,8 @@ module.exports = {
         {
           body: [
             commandHelp.data.toJSON(),
-            commandItad.data.toJSON()
+            commandItad.data.toJSON(),
+            commandItadId.data.toJSON()
           ]
         }
       )
@@ -30,6 +32,9 @@ module.exports = {
         break
       case 'itad':
         await commandItad.execute(interaction)
+        break
+      case 'itadid':
+        await commandItadId.execute(interaction)
         break
     }
   }
