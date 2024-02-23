@@ -22,6 +22,16 @@ module.exports = async (value, type) => {
       type: '',
       mature: false
     }
+    let appid = type === 'id' ? value : 0
+    let rDealPrice = '查無資料'
+    let rDealHistory = '查無資料'
+    let rInfo = '查無資料'
+    let rBundle = ''
+    let rSteamPrice = '查無資料'
+    let rSteamHistory = '查無資料'
+
+    let found = false
+
     if (type === 'name') {
       const apps = await searchITAD(value)
       const result = findNameInResults(apps, value)
@@ -57,6 +67,7 @@ module.exports = async (value, type) => {
         app.title = result.title
         app.type = result.type
         app.mature = result.mature
+        found = true
       }
     } else {
       const result = await searchITADid(value)
@@ -66,13 +77,14 @@ module.exports = async (value, type) => {
         app.title = result.game.title
         app.type = result.game.type
         app.mature = result.game.mature
+        found = true
       } else {
         embed.setColor(colors.error)
         embed.setTitle('查詢失敗')
         embed.setDescription(`找不到 ID 為 ${value} 的遊戲，請確認 ID 是否為遊戲 ID 而不是組合包 ID`)
       }
     }
-    if (app.id.length > 0) {
+    if (found && app.id.length > 0) {
       // const { plain } = find[0]
       // const appTitle = find[0].title
       // const appInfo = getSteamInfoByPlain(search, plain)
@@ -88,7 +100,10 @@ module.exports = async (value, type) => {
       const appHistory = appResults[3]?.[0]?.low
       const appBundles = appResults[4]
 
-      let rDealPrice = '查無資料'
+      if (type === 'name' && appInfo.appid) {
+        appid = appInfo.appid
+      }
+
       if (appLowest) {
         rDealPrice =
           `在 ${appLowest.shop.name}\n` +
@@ -100,7 +115,6 @@ module.exports = async (value, type) => {
         }
       }
 
-      let rDealHistory = '查無資料'
       if (appHistory) {
         rDealHistory = `${formatDate(new Date(appHistory.timestamp))}在 ${appHistory.shop.name}\n` +
         `原始價格: ${appHistory.regular.amount} USD / ${Math.round(appHistory.regular.amount * exrate.value * 100) / 100} TWD\n` +
@@ -108,10 +122,10 @@ module.exports = async (value, type) => {
         `https://isthereanydeal.com/game/${app.slug}/history/`
       }
 
-      let rInfo = `https://isthereanydeal.com/game/${app.slug}/info/\n`
+      rInfo = `https://isthereanydeal.com/game/${app.slug}/info/\n`
 
       /* bundles */
-      let rBundle = `總入包次數: ${appBundles.length}`
+      rBundle = `總入包次數: ${appBundles.length}`
       const activeBundles = appBundles.filter(bundle => new Date(bundle.expiry) > Date.now())
       if (activeBundles.length > 0) {
         rBundle += '\n目前入包:\n'
@@ -119,44 +133,42 @@ module.exports = async (value, type) => {
           rBundle += `${bundle.title}, ~${formatDate(new Date(bundle.expiry))}\n${bundle.url}`
         }
       }
+    }
+    /* is steam */
+    if (found && appid > 0) {
+      rInfo += `https://store.steampowered.com/app/${appid}/\n` +
+          `https://steamdb.info/app/${appid}/`
 
-      let rSteamPrice = ''
-      let rSteamHistory = ''
+      const replyImage = `https://steamcdn-a.akamaihd.net/steam/apps/${appid}/header.jpg`
+      let embedColorApp = colors.success
+      getColors(replyImage).then(colors => {
+        colors = colors.map(color => color.hex())
+        embedColorApp = colors[0]
+        embed.setColor(embedColorApp)
+      })
 
-      /* is steam */
-      if (appInfo.appid) {
-        rInfo += `https://store.steampowered.com/app/${appInfo.appid}/\n` +
-          `https://steamdb.info/app/${appInfo.appid}/`
+      embed.setImage(replyImage)
 
-        const replyImage = `https://steamcdn-a.akamaihd.net/steam/apps/${appInfo.appid}/header.jpg`
-        let embedColorApp = colors.success
-        getColors(replyImage).then(colors => {
-          colors = colors.map(color => color.hex())
-          embedColorApp = colors[0]
-          embed.setColor(embedColorApp)
-        })
+      const steamOV = await fetchSteamApp(appid)
 
-        embed.setImage(replyImage)
-
-        const steamOV = await fetchSteamApp(appInfo.appid)
-
-        if (steamOV[appInfo.appid].success && typeof steamOV[appInfo.appid].data === 'object') {
-          const price = steamOV[appInfo.appid].data.price_overview
-          rSteamPrice +=
+      if (steamOV[appid].success && typeof steamOV[appid].data === 'object' && !Array.isArray(steamOV[appid].data)) {
+        const price = steamOV[appid].data.price_overview
+        rSteamPrice +=
               `原始價格: ${price.initial_formatted.length === 0 ? price.final_formatted : price.initial_formatted}, \n` +
               `目前價格: ${price.final_formatted}, -${price.discount_percent}%`
 
-          const steamLow = await fetchSteamDB(appInfo.appid)
-          if (Object.keys(steamLow).length > 0) {
-            const lowestRegex = /(?<date1>\d+\s[A-Za-z]+\s+\d+)\s\((?<times>\d+)\stimes,\sfirst\son\s(?<date2>\d+\s[A-Za-z]+\s+\d+)\)/
-            const lowestResults = steamLow.data.lowest.date.match(lowestRegex)
-            let lowestStr = ''
-            if (lowestResults) lowestStr += `最近一次為 ${formatDate(new Date(lowestResults.groups.date1))}\n從 ${formatDate(new Date(lowestResults.groups.date2))}開始共出現 ${lowestResults.groups.times} 次`
-            else lowestStr += formatDate(new Date(steamLow.data.lowest.date))
-            if (steamLow.success) rSteamHistory += `${steamLow.data.lowest.price}, -${steamLow.data.lowest.discount}%\n${lowestStr}`
-          }
+        const steamLow = await fetchSteamDB(appid)
+        if (Object.keys(steamLow).length > 0) {
+          const lowestRegex = /(?<date1>\d+\s[A-Za-z]+\s+\d+)\s\((?<times>\d+)\stimes,\sfirst\son\s(?<date2>\d+\s[A-Za-z]+\s+\d+)\)/
+          const lowestResults = steamLow.data.lowest.date.match(lowestRegex)
+          let lowestStr = ''
+          if (lowestResults) lowestStr += `最近一次為 ${formatDate(new Date(lowestResults.groups.date1))}\n從 ${formatDate(new Date(lowestResults.groups.date2))}開始共出現 ${lowestResults.groups.times} 次`
+          else lowestStr += formatDate(new Date(steamLow.data.lowest.date))
+          if (steamLow.success) rSteamHistory += `${steamLow.data.lowest.price}, -${steamLow.data.lowest.discount}%\n${lowestStr}`
         }
       }
+    }
+    if (found) {
       embed
         .addFields([
           { name: 'isthereanydeal 目前最低', value: rDealPrice + '\n\u200b' }
@@ -164,26 +176,21 @@ module.exports = async (value, type) => {
         .addFields([
           { name: 'isthereanydeal 歷史最低', value: rDealHistory + '\n\u200b' }
         ])
-
-      if (rSteamPrice.length > 0) {
-        embed.addFields([
+        .addFields([
           { name: 'Steam 台灣區目前價格', value: rSteamPrice + '\n\u200b' }
         ])
-      }
-      if (rSteamHistory.length > 0) {
-        embed.addFields([
+        .addFields([
           { name: 'Steam 台灣區歷史最低', value: rSteamHistory + '\n\u200b' }
         ])
-      }
       embed.addFields([
         { name: '入包資訊', value: rBundle + '\n\u200b' }
       ])
       embed.addFields([
         { name: '更多資訊', value: rInfo }
       ])
-
-      react = '✅'
     }
+
+    react = '✅'
   } catch (err) {
     console.log(err)
     react = '❌'
