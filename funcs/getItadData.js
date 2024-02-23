@@ -27,10 +27,13 @@ module.exports = async (value, type) => {
       const result = findNameInResults(apps, value)
       if (!result) {
         embed.setColor(colors.error)
-        if (apps.length === 0) embed.setTitle(`找不到符合 ${value} 的遊戲`)
-        else {
+        if (apps.length === 0) {
+          embed.setTitle('查詢失敗')
+          embed.setDescription(`找不到符合 ${value} 的遊戲`)
+        } else {
           apps.sort((a, b) => a.title.length - b.title.length || a.title.localeCompare(b.title))
-          embed.setTitle(`找不到符合 ${value} 的遊戲，你是不是要找...\n\u200b`)
+          embed.setTitle('查詢失敗')
+          embed.setDescription(`找不到符合 ${value} 的遊戲，你是不是要找...\n\u200b`)
 
           const addedGames = []
           // j = array index
@@ -65,7 +68,8 @@ module.exports = async (value, type) => {
         app.mature = result.game.mature
       } else {
         embed.setColor(colors.error)
-        embed.setTitle(`找不到 ID 為 ${value} 的遊戲`)
+        embed.setTitle('查詢失敗')
+        embed.setDescription(`找不到 ID 為 ${value} 的遊戲，請確認 ID 是否為遊戲 ID 而不是組合包 ID`)
       }
     }
     if (app.id.length > 0) {
@@ -79,19 +83,31 @@ module.exports = async (value, type) => {
       const appInfo = appResults[0]
       // This is an empty array in some games, e.g. "Muse Dash"
       const appPrice = appResults[1]?.[0]?.deals?.sort((a, b) => b.cut - a.cut)?.[0]
-      const appLowest = appResults[2][0].lows.sort((a, b) => b.cut - a.cut)[0]
-      const appHistory = appResults[3][0].low
+      // This is an empty array in some games, e.g. SteamAppID 999
+      const appLowest = appResults[2]?.[0]?.deals?.sort((a, b) => b.cut - a.cut)?.[0]
+      const appHistory = appResults[3]?.[0]?.low
       const appBundles = appResults[4]
 
-      let rDeal =
-        `原始價格: ${appLowest.regular.amount} USD / ${Math.round(appLowest.regular.amount * exrate.value * 100) / 100} TWD\n` +
-        `目前最低: ${appLowest.price.amount} USD / ${Math.round(appLowest.price.amount * exrate.value * 100) / 100} TWD, -${appLowest.cut}%, 在 ${appLowest.shop.name}`
+      let rDealPrice = '查無資料'
+      if (appLowest) {
+        rDealPrice =
+          `在 ${appLowest.shop.name}\n` +
+          `原始價格: ${appLowest.regular.amount} USD / ${Math.round(appLowest.regular.amount * exrate.value * 100) / 100} TWD\n` +
+          `折扣價格: ${appLowest.price.amount} USD / ${Math.round(appLowest.price.amount * exrate.value * 100) / 100} TWD, -${appLowest.cut}%`
 
-      rDeal += `\n歷史最低: ${appHistory.price.amount} USD / ${Math.round(appHistory.price.amount * exrate.value * 100) / 100} TWD, -${appHistory.cut}%, ${formatDate(new Date(appHistory.timestamp))}在 ${appHistory.shop.name}`
-
-      if (appPrice) {
-        rDeal += '\n' + appPrice.url
+        if (appPrice) {
+          rDealPrice += '\n' + appPrice.url
+        }
       }
+
+      let rDealHistory = '查無資料'
+      if (appHistory) {
+        rDealHistory = `${formatDate(new Date(appHistory.timestamp))}在 ${appHistory.shop.name}\n` +
+        `原始價格: ${appHistory.regular.amount} USD / ${Math.round(appHistory.regular.amount * exrate.value * 100) / 100} TWD\n` +
+        `折扣價格: ${appHistory.price.amount} USD / ${Math.round(appHistory.price.amount * exrate.value * 100) / 100} TWD, -${appHistory.cut}%\n` +
+        `https://isthereanydeal.com/game/${app.slug}/history/`
+      }
+
       let rInfo = `https://isthereanydeal.com/game/${app.slug}/info/\n`
 
       /* bundles */
@@ -104,7 +120,8 @@ module.exports = async (value, type) => {
         }
       }
 
-      let rSteam = ''
+      let rSteamPrice = ''
+      let rSteamHistory = ''
 
       /* is steam */
       if (appInfo.appid) {
@@ -125,7 +142,8 @@ module.exports = async (value, type) => {
 
         if (steamOV[appInfo.appid].success && typeof steamOV[appInfo.appid].data === 'object') {
           const price = steamOV[appInfo.appid].data.price_overview
-          rSteam += `原始價格: ${price.initial_formatted.length === 0 ? price.final_formatted : price.initial_formatted}, \n` +
+          rSteamPrice +=
+              `原始價格: ${price.initial_formatted.length === 0 ? price.final_formatted : price.initial_formatted}, \n` +
               `目前價格: ${price.final_formatted}, -${price.discount_percent}%`
 
           const steamLow = await fetchSteamDB(appInfo.appid)
@@ -133,20 +151,28 @@ module.exports = async (value, type) => {
             const lowestRegex = /(?<date1>\d+\s[A-Za-z]+\s+\d+)\s\((?<times>\d+)\stimes,\sfirst\son\s(?<date2>\d+\s[A-Za-z]+\s+\d+)\)/
             const lowestResults = steamLow.data.lowest.date.match(lowestRegex)
             let lowestStr = ''
-            if (lowestResults) lowestStr += `\n最近一次為 ${formatDate(new Date(lowestResults.groups.date1))}\n從 ${formatDate(new Date(lowestResults.groups.date2))}開始共出現 ${lowestResults.groups.times} 次`
+            if (lowestResults) lowestStr += `最近一次為 ${formatDate(new Date(lowestResults.groups.date1))}\n從 ${formatDate(new Date(lowestResults.groups.date2))}開始共出現 ${lowestResults.groups.times} 次`
             else lowestStr += formatDate(new Date(steamLow.data.lowest.date))
-            if (steamLow.success) rSteam += `\n歷史最低: ${steamLow.data.lowest.price}, -${steamLow.data.lowest.discount}%, ${lowestStr}`
+            if (steamLow.success) rSteamHistory += `${steamLow.data.lowest.price}, -${steamLow.data.lowest.discount}%\n${lowestStr}`
           }
         }
       }
       embed
         .addFields([
-          { name: 'isthereanydeal 目前最低', value: rDeal + '\n\u200b' }
+          { name: 'isthereanydeal 目前最低', value: rDealPrice + '\n\u200b' }
+        ])
+        .addFields([
+          { name: 'isthereanydeal 歷史最低', value: rDealHistory + '\n\u200b' }
         ])
 
-      if (rSteam.length > 0) {
+      if (rSteamPrice.length > 0) {
         embed.addFields([
-          { name: 'Steam', value: rSteam + '\n\u200b' }
+          { name: 'Steam 台灣區目前價格', value: rSteamPrice + '\n\u200b' }
+        ])
+      }
+      if (rSteamHistory.length > 0) {
+        embed.addFields([
+          { name: 'Steam 台灣區歷史最低', value: rSteamHistory + '\n\u200b' }
         ])
       }
       embed.addFields([
