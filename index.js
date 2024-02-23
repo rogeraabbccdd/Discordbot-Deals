@@ -6,7 +6,6 @@ const relativeTime = require('dayjs/plugin/relativeTime')
 require('dayjs/locale/zh-tw')
 const exrate = require('./data/exrate')
 const commands = require('./commands/index')
-const fetchSale = require('./funcs/fetchSale')
 
 const client = new Client({
   intents: [
@@ -21,47 +20,9 @@ const client = new Client({
 
 dayjs.extend(relativeTime)
 
-let sale = {
-  start: '',
-  end: '',
-  name: ''
-}
-
 schedule.scheduleJob('0 0 0 * * *', async () => {
   await exrate.update()
-  sale = await fetchSale()
 })
-
-const showSale = false
-let changed = false
-let loggedIn = false
-
-// activity
-setInterval(() => {
-  if (!loggedIn) return
-  const now = new Date()
-  if (showSale && sale.name.length > 0) {
-    const time = now.getTime()
-    let text = ''
-    if (time < sale.start) {
-      text = `${sale.name} 將於 ${dayjs(sale.start).locale('zh-tw').fromNow()}開始`
-    } else if (time < sale.end) {
-      text = `${sale.name} 將於 ${dayjs(sale.end).locale('zh-tw').fromNow()}結束`
-    } else {
-      text = `${sale.name} 已結束`
-    }
-    client.user.setPresence({ activities: [{ name: text }], status: 'LISTENING' })
-  } else {
-    client.user.setPresence({ activities: [{ name: '使用 /itadhelp 查詢指令' }], status: 'LISTENING' })
-  }
-
-  if ((now.getMinutes() === 0 || now.getMinutes() === 30) && !changed) {
-    // showSale = !showSale
-    changed = true
-  } else {
-    changed = false
-  }
-}, 1000)
 
 client.on('ready', () => {
   console.log(`Logged in as ${client.user.tag}!`)
@@ -78,9 +39,8 @@ client.on('interactionCreate', async interaction => {
 })
 
 client.login(process.env.DISCORD_TOKEN).then(async () => {
-  loggedIn = true
   exrate.update()
-  sale = await fetchSale()
+  client.user.setPresence({ activities: [{ name: '使用 /itadhelp 查詢指令' }], status: 'LISTENING' })
 })
 
 // Web service and keep sending request to prevent sleep
