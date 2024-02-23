@@ -153,7 +153,7 @@ module.exports = async (value, type) => {
 
       if (steamOV[appid].success && typeof steamOV[appid].data === 'object' && !Array.isArray(steamOV[appid].data)) {
         const price = steamOV[appid].data.price_overview
-        rSteamPrice +=
+        rSteamPrice =
               `原始價格: ${price.initial_formatted.length === 0 ? price.final_formatted : price.initial_formatted}, \n` +
               `目前價格: ${price.final_formatted}, -${price.discount_percent}%`
 
@@ -164,7 +164,7 @@ module.exports = async (value, type) => {
           let lowestStr = ''
           if (lowestResults) lowestStr += `最近一次為 ${formatDate(new Date(lowestResults.groups.date1))}\n從 ${formatDate(new Date(lowestResults.groups.date2))}開始共出現 ${lowestResults.groups.times} 次`
           else lowestStr += formatDate(new Date(steamLow.data.lowest.date))
-          if (steamLow.success) rSteamHistory += `${steamLow.data.lowest.price}, -${steamLow.data.lowest.discount}%\n${lowestStr}`
+          if (steamLow.success) rSteamHistory = `${steamLow.data.lowest.price}, -${steamLow.data.lowest.discount}%\n${lowestStr}`
         }
       }
     }
