@@ -158,13 +158,9 @@ module.exports = async (value, type) => {
               `目前價格: ${price.final_formatted}, -${price.discount_percent}%`
 
         const steamLow = await fetchSteamDB(appid)
-        if (Object.keys(steamLow).length > 0) {
-          const lowestRegex = /(?<date1>\d+\s[A-Za-z]+\s+\d+)\s\((?<times>\d+)\stimes,\sfirst\son\s(?<date2>\d+\s[A-Za-z]+\s+\d+)\)/
-          const lowestResults = steamLow.data.lowest.date.match(lowestRegex)
-          let lowestStr = ''
-          if (lowestResults) lowestStr += `最近一次為 ${formatDate(new Date(lowestResults.groups.date1))}\n從 ${formatDate(new Date(lowestResults.groups.date2))}開始共出現 ${lowestResults.groups.times} 次`
-          else lowestStr += formatDate(new Date(steamLow.data.lowest.date))
-          if (steamLow.success) rSteamHistory = `${steamLow.data.lowest.price}, -${steamLow.data.lowest.discount}%\n${lowestStr}`
+        if (Object.keys(steamLow).length > 0 && steamLow.success) {
+          rSteamHistory = `${steamLow.data.p}, -${steamLow.data.d}%\n`
+          rSteamHistory += `最近一次為 ${formatDate(new Date(steamLow.data.t * 1000))}, 共出現 ${steamLow.data.c} 次`
         }
       }
     }

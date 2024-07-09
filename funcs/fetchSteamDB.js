@@ -4,7 +4,7 @@ module.exports = async (id) => {
   let result = {}
 
   try {
-    const { data } = await axios.get('https://steamdb.info/api/ExtensionGetPrice/', {
+    const { data } = await axios.get('https://steamdb.info/api/ExtensionAppPrice/', {
       params: {
         appid: id,
         currency: 'TWD'
