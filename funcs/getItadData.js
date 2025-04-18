@@ -8,7 +8,6 @@ const fetchItad = require('./fetchItad')
 const fetchSteamApp = require('./fetchSteamApp')
 const fetchSteamDB = require('./fetchSteamDB')
 const colors = require('../data/colors')
-const exrate = require('../data/exrate')
 
 module.exports = async (value, type) => {
   let embed = new EmbedBuilder()
@@ -107,8 +106,8 @@ module.exports = async (value, type) => {
       if (appLowest) {
         rDealPrice =
           `在 ${appLowest.shop.name}\n` +
-          `原始價格: ${appLowest.regular.amount} USD / ${Math.round(appLowest.regular.amount * exrate.value * 100) / 100} TWD\n` +
-          `折扣價格: ${appLowest.price.amount} USD / ${Math.round(appLowest.price.amount * exrate.value * 100) / 100} TWD, -${appLowest.cut}%`
+          `原始價格: ${appLowest.regular.amount} TWD\n` +
+          `折扣價格: ${appLowest.price.amount} TWD, -${appLowest.cut}%`
 
         if (appPrice) {
           rDealPrice += '\n' + appPrice.url
@@ -117,8 +116,8 @@ module.exports = async (value, type) => {
 
       if (appHistory) {
         rDealHistory = `${formatDate(new Date(appHistory.timestamp))}在 ${appHistory.shop.name}\n` +
-        `原始價格: ${appHistory.regular.amount} USD / ${Math.round(appHistory.regular.amount * exrate.value * 100) / 100} TWD\n` +
-        `折扣價格: ${appHistory.price.amount} USD / ${Math.round(appHistory.price.amount * exrate.value * 100) / 100} TWD, -${appHistory.cut}%\n` +
+        `原始價格: ${appHistory.regular.amount} TWD\n` +
+        `折扣價格: ${appHistory.price.amount} TWD, -${appHistory.cut}%\n` +
         `https://isthereanydeal.com/game/${app.slug}/history/`
       }
 
