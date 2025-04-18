@@ -40,6 +40,7 @@ client.on('interactionCreate', async interaction => {
 
 client.login(process.env.DISCORD_TOKEN).then(async () => {
   exrate.update()
+  console.log(`In ${client.guilds.cache.size} guilds`)
   client.user.setPresence({ activities: [{ name: '使用 /itadhelp 查詢指令' }], status: 'LISTENING' })
 })
 
