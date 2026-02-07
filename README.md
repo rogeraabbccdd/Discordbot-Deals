@@ -24,8 +24,8 @@ Click [here](https://discordapp.com/oauth2/authorize?client_id=63490254168732470
     ERROR="false"
   ```
 
-- Run `npm install` to install dependencies.
-- Run `npm start` to start your bot.
+- Run `bun i` to install dependencies.
+- Run `bun start` to start your bot.
   
 ## Usage
 - Add your bot as friend or invite it to your group
