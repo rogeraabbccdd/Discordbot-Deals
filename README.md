@@ -4,7 +4,6 @@ A discord bot to get deals information of steam app.
 # Deals Discord Bot
 A discord bot to get deals information form [isthereanydeal.com](https://isthereanydeal.com)  
 Click [here](https://discordapp.com/oauth2/authorize?client_id=634902541687324702&scope=bot&permissions=28832) to add the bot.  
-**Bot is hosting on heroku free dyno, and will stop running after running out free hours.**
   
 ![preview](preview.png)  
   
@@ -27,6 +26,7 @@ Click [here](https://discordapp.com/oauth2/authorize?client_id=63490254168732470
 - Run `bun i` to install dependencies.
 - Run `bun start` to start your bot.
   
-## Usage
-- Add your bot as friend or invite it to your group
-- You can use command `!itad <gamename>` to get deals info of the game.
+## Commands
+- `/itadhelp`
+- `/itad <game-name>`
+- `/itadid <steam-app-id>`
