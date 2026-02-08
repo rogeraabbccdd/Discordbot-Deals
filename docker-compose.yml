@@ -1,0 +1,9 @@
+services:
+  discord-bot:
+    container_name: discordbot-deals
+    build: .
+    restart: always
+    env_file:
+      - .env
+    environment:
+      - TZ=Asia/Taipei

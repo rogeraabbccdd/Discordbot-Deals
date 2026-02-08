@@ -25,7 +25,11 @@ Click [here](https://discordapp.com/oauth2/authorize?client_id=63490254168732470
 
 - Run `bun i` to install dependencies.
 - Run `bun start` to start your bot.
-  
+
+## Docker
+- Run `docker build -t discordbot-deals .` to build docker image.
+- Run `docker run --name discordbot-deals -v "<your .env file path>:/app/.env" discordbot-deals` to start the bot.
+
 ## Commands
 - `/itadhelp`
 - `/itad <game-name>`
